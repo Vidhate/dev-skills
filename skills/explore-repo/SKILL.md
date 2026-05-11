@@ -1,6 +1,6 @@
 ---
 description: "Explore a new repository and generate an interactive CODEBASE.html orientation file"
-allowed-tools: ["Agent", "Write", "Read"]
+allowed-tools: ["Agent", "Write(CODEBASE.html)", "Read(**/DESIGN.md)", "Read(DESIGN.md)"]
 ---
 
 # Explore Repo
@@ -9,7 +9,10 @@ You are about to explore the current repository using three parallel subagents. 
 
 ## Step 0: Check for DESIGN.md
 
-Attempt to read `DESIGN.md` from the root of the current repo. Most repos will not have this file — that is the normal case. If found, store its contents to use as the design guide in Step 2. If not found, missing, or empty, skip silently and use the default design spec — do not treat this as an error.
+**You must attempt this step before launching any subagents.** Read `./DESIGN.md` from the root of the current repo. This is a mandatory read attempt — do not skip it.
+
+- If the file exists and has content: store its full contents. You will use them to override the default visual design in Step 2.
+- If the file does not exist or is empty: note that no design file was found and proceed. This is the common case — not an error.
 
 ## Step 1: Launch three Explore subagents in parallel
 
