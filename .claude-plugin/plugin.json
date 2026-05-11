@@ -1,0 +1,9 @@
+{
+  "name": "dev-skills",
+  "description": "Developer productivity skills — repo exploration, onboarding, and more",
+  "version": "0.1",
+  "author": {
+    "name": "Aditya Vidhate"
+  },
+  "repository": "https://github.com/Vidhate/dev-skills.git"
+}
