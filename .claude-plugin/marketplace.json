@@ -1,5 +1,4 @@
 {
-  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "dev-skills",
   "description": "Developer productivity skills — repo exploration, onboarding, and more",
   "owner": {
@@ -9,16 +8,7 @@
   "plugins": [
     {
       "name": "dev-skills",
-      "description": "Developer productivity skills — repo exploration, onboarding, and more",
-      "author": {
-        "name": "Aditya Vidhate"
-      },
-      "source": {
-        "source": "github",
-        "repo": "Vidhate/dev-skills",
-        "commit": "9b2628476b73998905854a711fa2aaf41b4c4bcd",
-        "sha": "9b2628476b73998905854a711fa2aaf41b4c4bcd"
-      }
+      "source": "./"
     }
   ]
 }
