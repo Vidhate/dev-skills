@@ -1,5 +1,6 @@
 ---
 description: "Explore a new repository and generate a CODEBASE.html visual orientation file"
+allowed-tools: ["Agent", "Write"]
 ---
 
 # Explore Repo
