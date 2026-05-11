@@ -6,7 +6,7 @@
   "plugins": [
     {
       "name": "dev-skills",
-      "source": ".",
+      "source": "./",
       "description": "Developer productivity skills — repo exploration, onboarding, and more"
     }
   ]
