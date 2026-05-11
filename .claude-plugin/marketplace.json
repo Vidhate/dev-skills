@@ -1,0 +1,13 @@
+{
+  "name": "dev-skills",
+  "owner": {
+    "name": "Aditya Vidhate"
+  },
+  "plugins": [
+    {
+      "name": "dev-skills",
+      "source": ".",
+      "description": "Developer productivity skills — repo exploration, onboarding, and more"
+    }
+  ]
+}
