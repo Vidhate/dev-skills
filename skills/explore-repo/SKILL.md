@@ -1,17 +1,17 @@
 ---
 description: "Explore a new repository and generate an interactive CODEBASE.html orientation file"
-allowed-tools: ["Agent", "Write(CODEBASE.html)", "Read(**/DESIGN.md)", "Read(DESIGN.md)"]
+allowed-tools: ["Agent", "Read(**/DESIGN.md)", "Read(DESIGN.md)"]
 ---
 
 # Explore Repo
 
-You are about to explore the current repository using three parallel subagents. Each agent has a single focused question and must return data in a specific structured format. Their job is **data gathering only** — no formatting, no visualization. After all three return, you (the skill) own the rendering step entirely.
+You are about to explore the current repository using three parallel subagents, then hand all findings to a dedicated rendering subagent that writes the HTML. Your main thread only coordinates — it does not write or render anything.
 
 ## Step 0: Check for DESIGN.md
 
 **You must attempt this step before launching any subagents.** Read `./DESIGN.md` from the root of the current repo. This is a mandatory read attempt — do not skip it.
 
-- If the file exists and has content: store its full contents. You will use them to override the default visual design in Step 2.
+- If the file exists and has content: store its full contents. You will pass them to the rendering agent in Step 2.
 - If the file does not exist or is empty: note that no design file was found and proceed. This is the common case — not an error.
 
 ## Step 1: Launch three Explore subagents in parallel
@@ -56,7 +56,9 @@ MODELS:
     - name: <field name>
       type: <field type>
       note: <optional — one short phrase if the field needs explanation, else omit>
-  relationships: <optional — one sentence describing how this model relates to others, else omit>
+  relationships:
+    - target: <OtherEntityName>
+      label: <short verb phrase, e.g. "has many", "belongs to", "references">
 ```
 
 ---
@@ -81,57 +83,98 @@ DEPENDENCIES:
 
 ---
 
-## Step 2: Render CODEBASE.html
+## Step 2: Launch the rendering subagent
 
-Once all four agents have returned, write a `CODEBASE.html` file at the root of the repo. You are fully responsible for the visual design and interactivity. All CSS and JS must be inline — no external dependencies.
+Once all three Explore agents have returned, fire a single general-purpose subagent and pass it the complete structured output from all three agents plus the DESIGN.md contents (or note that none was found). The rendering agent's sole job is to write `CODEBASE.html`.
 
-### Design source
+Pass this exact prompt to the rendering agent, with the agent outputs substituted in:
 
-- **If DESIGN.md was found in Step 0** — use its contents as your primary design guide (colors, typography, tone, layout preferences). Adapt the structure below to match that design language.
-- **If DESIGN.md was not found** — use the default design spec below.
+---
 
-### Default design spec
+```
+You are a rendering agent. Your only job is to write a single self-contained `CODEBASE.html` file to the current working directory. Do not explain your work. Do not summarise what you wrote. Just write the file and stop.
 
-- **Color palette** — dark background `#0d1117`, card surfaces `#161b22`, borders `#30363d`, primary accent `#58a6ff`, secondary accent `#3fb950`, muted text `#8b949e`, body text `#e6edf3`, amber `#e3b341`.
-- **Typography** — `-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`. File paths and code in `monospace`.
-- **No external fonts, no CDN links, no images.** Pure HTML + inline CSS + inline JS only.
+You have been given the following data from a codebase exploration:
 
-### Layout
+<agent1_output>
+{PASTE AGENT 1 OUTPUT HERE}
+</agent1_output>
 
-**Header strip** — full width. Left: repo name (large) + one-sentence summary below it. Right: tech stack pills (language, framework, test runner, build tool, deploy config) rendered as small rounded badge tags. Each pill is `#161b22` background with `#30363d` border and `#e6edf3` text.
+<agent2_output>
+{PASTE AGENT 2 OUTPUT HERE}
+</agent2_output>
 
-**Main body** — two-column layout below the header:
+<agent3_output>
+{PASTE AGENT 3 OUTPUT HERE}
+</agent3_output>
 
-- **Left column (40%)** — Entry Points panel with `#58a6ff` top border accent.
-  - For each entry point: monospace filename pill + description below it.
+<design_file>
+{PASTE DESIGN.md CONTENTS HERE, OR WRITE "NOT FOUND" IF ABSENT}
+</design_file>
 
-- **Right column (60%)** — Domain Model panel with `#3fb950` top border accent.
-  - Each model is a **clickable card**. Collapsed state shows: model name (bold) + file path (muted monospace) + one-line description. An expand chevron (▶) on the right.
-  - Clicking the card expands it in-place to reveal a fields table: columns are Field, Type, Note. Style the table with subtle row striping. If `relationships` is present, show it below the table as a muted italic line.
-  - Only one card can be expanded at a time. Clicking an open card collapses it. Clicking a different card collapses the open one and expands the new one.
-  - Smooth CSS transition on expand/collapse (max-height animation, 200ms ease).
+---
 
-**Where to Start section** — full-width strip below the two columns, `#161b22` background, `#e3b341` top border accent.
-- Title: "Where to Start Reading"
-- Numbered list from Agent 1's `CORE_FILES`. For each file:
-  - Number badge (amber circle) + file path in a monospace clickable badge that copies the path to clipboard on click (show a brief "Copied!" tooltip) + the `why` sentence in body text + the `look_for` sentence in smaller muted italic text below.
+## Design source
 
-**Interactivity requirements:**
-- Domain model cards expand/collapse on click (accordion, one open at a time).
-- File path badges in "Where to Start" copy path to clipboard on click with a tooltip confirmation.
-- Add a small live search/filter input at the top of the Domain Model panel. Typing filters visible model cards by name in real time (case-insensitive). If no matches, show "No models match." Cards that don't match are hidden, not removed.
-- All interactive behaviour must work with zero external JS libraries.
+- If <design_file> has content: use it as your primary design guide (colors, typography, tone, layout). Adapt the structure below to match that design language.
+- If <design_file> is "NOT FOUND": use the default design spec below.
+
+## Default design spec
+
+- Color palette: dark background `#0d1117`, card surfaces `#161b22`, borders `#30363d`, primary accent `#58a6ff`, secondary accent `#3fb950`, muted text `#8b949e`, body text `#e6edf3`, amber `#e3b341`.
+- Typography: `-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`. File paths and code in monospace.
+- Mermaid.js is loaded via CDN: `https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js`. All other behaviour is pure inline CSS and JS — no other external dependencies.
+
+## Layout
+
+**Header strip** — full width. Left: repo name (large) + one-sentence summary below it. Right: tech stack pills (language, framework, test runner, build tool, deploy config) as small rounded badge tags.
+
+**Main body** — two-column layout:
+
+- Left column (40%) — Entry Points panel with `#58a6ff` top border accent. For each entry point: monospace filename pill + description below it.
+
+- Right column (60%) — Domain Model panel with `#3fb950` top border accent.
+  - Live search/filter input at the top. Typing filters cards by name in real time (case-insensitive).
+  - Each model is a clickable accordion card. Collapsed: model name (bold) + file path (muted monospace) + one-line description + expand chevron (▶).
+  - Expanded: fields table (Field / Type / Note columns, subtle row striping) + relationships listed below as muted italic lines.
+  - One card open at a time. Smooth max-height CSS transition, 200ms ease.
+
+**Diagrams section** — full-width panel below the two columns, `#161b22` background, `#58a6ff` top border accent. Title: "Relationships & Dependencies". Use Mermaid.js to render the following diagrams side by side (or stacked if content warrants it):
+
+1. **Domain model relationship diagram** — a `graph LR` (or `erDiagram` if relationships are well-defined) showing connections between the models from Agent 2. Use the `relationships` field on each model to draw edges with labels. Only include models and edges that have explicit relationship data — do not invent connections.
+
+2. **Entry point flow diagram** — a `graph TD` showing the execution flow from entry points down to the key abstractions or services they touch, inferred from Agent 1's entry point descriptions and Agent 2's model data. Keep it to 8–12 nodes maximum — prune aggressively for clarity.
+
+Initialise Mermaid with: `mermaid.initialize({ startOnLoad: true, theme: 'dark' })`.
+Wrap each diagram in a `<div class="mermaid">` block. If there is insufficient relationship data to draw a meaningful diagram, omit that specific diagram rather than drawing an empty or trivial one.
+
+**Where to Start section** — full-width strip, `#161b22` background, `#e3b341` top border accent. Title: "Where to Start Reading". Numbered list from CORE_FILES. For each file: amber number badge + monospace path badge (click to copy, show "Copied!" tooltip) + `why` sentence + `look_for` in smaller muted italic below.
 
 **Footer** — muted centered text: `Generated by /explore-repo · {DATE}`.
 
-### Content mapping
+## Content mapping
 
 | Section | Source |
 |---|---|
-| Repo name | Infer from root folder name or manifest `name` field |
-| One-sentence summary | Synthesize from Agent 1 + Agent 2 findings |
-| Tech stack pills | Agent 3 `STACK` fields |
-| Entry Points panel | Agent 1 `ENTRY_POINTS` |
-| Domain Model panel | Agent 2 `MODELS` — collapsed cards with expandable field tables |
-| Where to Start | Agent 1 `CORE_FILES` |
-| Design overrides | DESIGN.md if found in Step 0 |
+| Repo name | Infer from manifest `name` field or root folder name |
+| One-sentence summary | Synthesize from Agent 1 + Agent 2 |
+| Tech stack pills | Agent 3 STACK |
+| Entry Points panel | Agent 1 ENTRY_POINTS |
+| Domain Model panel | Agent 2 MODELS |
+| Domain relationship diagram | Agent 2 MODELS relationships |
+| Entry point flow diagram | Agent 1 ENTRY_POINTS + Agent 2 MODELS |
+| Where to Start | Agent 1 CORE_FILES |
+| Design overrides | design_file if present |
+```
+
+---
+
+## Step 3: Completion message
+
+Once the rendering agent confirms the file is written, respond with a single short line — nothing more:
+
+```
+✓ CODEBASE.html ready. Open it in a browser to explore the repo.
+```
+
+Do not summarise the design choices, list the sections, describe the color palette, enumerate the models, or explain what was generated. The HTML speaks for itself.
