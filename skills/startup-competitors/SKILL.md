@@ -1,12 +1,23 @@
 ---
 name: startup-competitors
-version: 1.1.0
+version: 1.2.0
 description: Deep competitive intelligence for any market. Analyzes competitors' products, pricing, customer sentiment, GTM strategy, and growth signals using real web data. Produces battle cards, pricing landscape, feature matrix, and an interactive HTML brief. Use when the user wants to understand their competitive landscape, analyze competitors, compare products in a market, or research who they're competing against. Triggers for "who are my competitors", "competitive analysis", "competitor research", "battle cards", "pricing comparison", "competitor pricing", "market players", "competitive intelligence", "competitive landscape", "who else is in this space", "competitive moat", or any request to profile, compare, or map competitors in a category. Works standalone — no prior startup-design session needed.
 allowed-tools: ["Agent", "WebSearch", "WebFetch", "Read", "Write", "Edit", "Bash", "TodoWrite"]
 ---
 
 <!--
   CHANGELOG
+  1.2.0 (2026-05-27) — Autonomy pass. New Phase 0 (Environment Bootstrap) writes
+                       .claude/settings.local.json with required permissions and halts
+                       for a one-time restart. Phase 2 web-search precondition is now a
+                       hard abort (no mid-run prompting), with per-subagent permission
+                       self-checks and a PERMISSION_DENIED sentinel that aborts the run
+                       rather than allowing silent parametric fallback. Phase 1.5 auto-
+                       selects research depth (no user prompt). Post-research checkpoint
+                       writes checkpoint.md instead of asking. Phase 3.5 never pauses on
+                       critical issues — they roll up into the HTML brief instead. Added
+                       SETUP.md (user-facing setup contract) and FOLLOWUPS.md (citation-
+                       coverage check + link-validation subagent, back-pocket).
   1.1.0 (2026-05-15) — Phase 4 HTML brief; section-level citations; strict web search
                       precondition; verification report rolls into HTML; mobile-friendly
                       breakpoints; design system + brief template added as references.
