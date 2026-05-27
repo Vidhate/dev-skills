@@ -146,5 +146,7 @@ Minor improvements and observations.
 
 ## Flow Control
 
-- **If Critical issues > 0:** Pause. Show the user: "Verification found {N} critical issues that could affect decision-making." List them. Ask: "Should I fix these before continuing, or proceed as-is?"
-- **If only Warnings/Info:** Show a one-line summary: "Verification complete: {N} warnings, {N} info items. See `verification-report.md` for details." Continue.
+The skill runs autonomously after intake — **never pause for user input here**, even on critical issues. Critical findings are surfaced in two places already: the `verification-report.md` file, and the `#verification` section of the Phase 4 HTML brief (which colors its verdict badge red when critical issues are present). The user reviews them after the run.
+
+- **Regardless of issue counts:** print a one-line summary ("Verification: {N} critical, {N} warnings, {N} info — see `verification-report.md`") and continue to Phase 4.
+- **Be honest in the report.** Don't soften critical issues to make the rollup look better — the file is visible to whoever reads the brief.

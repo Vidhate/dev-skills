@@ -47,6 +47,60 @@ Default output language is **English**. If the user writes in another language o
 
 ---
 
+## Phase 0: Environment Bootstrap (MANDATORY — runs before intake)
+
+The skill cannot run autonomously without specific permissions pre-granted in the project's `.claude/settings.local.json`. Phase 0 ensures they exist before any work begins. **Run this before reading any other reference file and before asking the user any intake questions.**
+
+### Process
+
+1. **Check for the settings file** at `<cwd>/.claude/settings.local.json`. If `<cwd>` is not a project root, check the nearest ancestor containing a `.claude/` directory; if none, treat as missing.
+
+2. **Verify the required permissions are present.** The file must contain (under `permissions.allow`) at minimum every entry in the canonical block below. Missing entries → treat the file as incomplete.
+
+   Canonical required allowlist:
+   ```json
+   {
+     "permissions": {
+       "allow": [
+         "WebSearch",
+         "WebFetch",
+         "Read",
+         "Write",
+         "Edit",
+         "Agent",
+         "Bash(mkdir:*)",
+         "Bash(ls:*)",
+         "Bash(cat:*)",
+         "Read(//Users/*/.claude/plugins/**)",
+         "Read(//Users/*/.claude/skills/**)"
+       ]
+     }
+   }
+   ```
+
+3. **If the file is missing or incomplete:**
+   - Create `<cwd>/.claude/` if needed (`mkdir -p`).
+   - Write `settings.local.json` with the canonical block above. If the file exists but is missing entries, merge — preserve any existing allow entries and add the missing ones.
+   - **Halt the skill.** Print this exact message to the user and stop. Do not continue to Phase 1:
+
+     > **Setup complete — please restart and re-invoke.**
+     >
+     > I've written the permissions this skill needs to `.claude/settings.local.json`. Claude Code only loads permissions at session start, so this current session can't pick them up.
+     >
+     > Please **restart Claude Code** (or open a new session) and re-invoke the skill. It will then run end-to-end without further interruption.
+     >
+     > Why this is needed: this skill spawns parallel research subagents that need WebSearch and WebFetch. Without pre-granted permissions, every subagent triggers its own approval prompt, which breaks autonomy and risks silent fallback to ungrounded output.
+
+4. **If the file is present and complete:** silently log "Phase 0: permissions verified" to PROGRESS.md (which doesn't exist yet — defer this line until PROGRESS.md is created in Phase 1) and proceed to Phase 1.
+
+### Why Phase 0 cannot be skipped
+
+- Permissions are read at session start by Claude Code; mid-session grants don't propagate to subagents spawned in parallel.
+- The WebSearch probe in Phase 2 is a runtime check (does the tool actually work right now?) — Phase 0 is the *configuration* check that prevents Phase 2 from ever failing.
+- See `SETUP.md` in the skill root for the user-facing version of this contract.
+
+---
+
 ## Phase 1: Intake
 
 Short and focused — 1-2 rounds of questions, not an extended interview. The goal is just enough context to run targeted research.
@@ -93,19 +147,19 @@ Create `{project-name}/PROGRESS.md` with: project name, skill name (`startup-com
 
 ---
 
-## Phase 1.5: Research Depth Assessment
+## Phase 1.5: Research Depth Assessment (autonomous)
 
-After intake, assess market complexity and present the Research Depth recommendation to the user.
+After intake, assess market complexity and **auto-select** the research depth. Do not ask the user — the scoring rubric is deterministic, and asking breaks autonomy.
 
-> **Reference:** Read `references/research-scaling.md` for the complexity scoring matrix, tier definitions, wave configurations, and the user communication template.
+> **Reference:** Read `references/research-scaling.md` for the complexity scoring matrix, tier definitions, and wave configurations.
 
 ### Process
 
-1. Score three factors from the intake: market breadth (1-3), known competitors (1-3), geographic scope (1-3)
-2. Sum the scores (range 3-9) and map to a tier: Light (3-4), Standard (5-7), Deep (8-9)
-3. Present the Research Depth table to the user (see `research-scaling.md` for the exact template)
-4. Wait for user response: **light**, **deep**, or **ok** to accept the recommendation
-5. Record the selected tier in PROGRESS.md
+1. Score three factors from the intake: market breadth (1-3), known competitors (1-3), geographic scope (1-3).
+2. Sum the scores (range 3-9) and map to a tier: Light (3-4), Standard (5-7), Deep (8-9).
+3. **Check the original intake text for an explicit user override.** If the user typed "quick", "fast", or "light" during intake → force Light. If they typed "deep", "thorough", or "comprehensive" → force Deep. Otherwise use the scored tier.
+4. Record the selected tier in PROGRESS.md along with the score breakdown and any override reason.
+5. Tell the user *as a one-line statement* (not a question): "Running **{tier}** research (complexity score {X}/9, {N} agents per wave)." Then proceed immediately to Phase 2.
 
 The selected tier determines the number of agents per wave and search rounds per agent in Phase 2. See `research-scaling.md` for exact wave configurations per tier.
 
@@ -122,18 +176,49 @@ Check if the `Agent` tool is available:
 - **Agent tool available (Claude Code):** Spawn all agents within each wave in parallel. This is faster.
 - **Agent tool NOT available (Claude.ai, web):** Execute research sequentially, following the same templates. Same depth, just slower.
 
-### Web Search — MANDATORY precondition
+### Web Search — MANDATORY precondition (hard fail, not prompt-and-wait)
 
-**This skill requires WebSearch AND WebFetch. Without them the output quality collapses** — competitor funding, pricing, lateral moves, regulatory state, and 2025-2026 events are not in parametric knowledge with sufficient detail. **Silent fallback to Knowledge-Based Mode is no longer acceptable.**
+**This skill requires WebSearch AND WebFetch. Without them the output quality collapses** — competitor funding, pricing, lateral moves, regulatory state, and 2025-2026 events are not in parametric knowledge with sufficient detail. **Silent fallback to parametric knowledge is forbidden.** Phase 0 should have already ensured the permissions exist; this is the runtime verification.
 
-Before launching Phase 2, run an explicit precondition check:
+#### Parent-level precondition
 
-1. **Verify both tools are available.** Attempt a single trivial `WebSearch` query (e.g., "site:ftc.gov press release"). If it succeeds, proceed. If it fails with a permission error:
-2. **Halt and ask the user to grant permission.** Tell them: *"This skill needs WebSearch + WebFetch to ground findings in 2025-2026 data. Without them, every figure becomes a parametric guess and the output quality degrades materially. Please approve the permission prompt, or run `/permissions` to allow `WebSearch` and `WebFetch` for this session. You can also add them to `.claude/settings.json` under `permissions.allow` to persist."*
-3. **Before spawning research agents, repeat the precondition check.** Sub-agents inherit the parent permission scope — if the parent has WebSearch, the agents will too. If the parent doesn't, neither will they.
-4. **Brief every Phase 2 agent** that web search is mandatory. In each agent prompt, include: *"USE WEB SEARCH HEAVILY. Tag every figure [Data] / [Estimate] / [Vendor claim]. If WebSearch returns no results for a claim, mark it as [Data Gap] rather than falling back to parametric memory."*
+Before spawning any subagent, run a single trivial `WebSearch` query (e.g., "site:ftc.gov press release"):
 
-**Only as a deliberate fallback** (user explicitly says "I don't want web search, just use what you know"): switch to **Knowledge-Based Mode** — mark all findings with **[Knowledge-Based — verify independently]**, reduce confidence ratings by one level, and add a prominent disclaimer to every deliverable's header. Never enter this mode silently.
+- **If it succeeds:** record "WebSearch precondition: ok" in PROGRESS.md and proceed.
+- **If it fails for any reason (permission denied, error, no results due to disabled tool):** **abort the skill immediately.** Do not prompt the user to grant permission mid-run — that defeats autonomy. Print:
+
+  > **Aborting: WebSearch is not available in this session.**
+  >
+  > Phase 0 wrote the required permissions to `.claude/settings.local.json`, but they are not active in the current session. Please restart Claude Code and re-invoke. If this keeps happening, check `SETUP.md` and confirm `WebSearch` and `WebFetch` are in the allow list.
+
+  Do not continue. Do not switch to Knowledge-Based Mode silently.
+
+#### Subagent-level precondition (every Wave 1/2/3 agent)
+
+Subagents do **not** reliably inherit the parent's permission scope across all Claude Code modes. Every spawned subagent must self-check before doing any real work. Include this block verbatim at the top of every Phase 2 agent prompt:
+
+> **Permission self-check (run this first, before any other action).**
+>
+> 1. Run a single trivial WebSearch: query `"site:example.com"`.
+> 2. If the call errors with a permission denial or returns a tool-unavailable error: write the single token `PERMISSION_DENIED` to your output file (`{your-assigned-output-path}`) and exit immediately with no other content.
+> 3. If the call succeeds (even with zero results): proceed with the rest of the task.
+>
+> **Anti-fabrication contract.** Use WebSearch heavily — at least {search-rounds} distinct queries before drawing any conclusion about a competitor. Every concrete claim (number, date, funding amount, employee count, named feature) must be followed by either (a) a citation URL or (b) one of these tags on the same line: `[Data]`, `[Estimate]`, `[Vendor claim]`, `[Data Gap]`. If WebSearch returns nothing usable for a claim, write `[Data Gap]` — do **not** fall back to training-data memory. Outputs lacking either a URL or a tag will be rejected by the verification step.
+
+Substitute `{your-assigned-output-path}` and `{search-rounds}` per agent.
+
+#### Post-spawn sentinel check
+
+After all subagents in a wave finish, **before reading their content as research output**:
+
+1. Read each subagent's output file.
+2. If any contain the token `PERMISSION_DENIED`, **abort the entire skill run** with the same message as the parent-level precondition failure above. Do not proceed to synthesis with partial waves.
+
+This is the load-bearing check that prevents silent parametric output.
+
+#### Knowledge-Based Mode
+
+The deliberate-fallback Knowledge-Based Mode (user says "I don't want web search, just use what you know") still exists but must be invoked **explicitly by the user at intake time**. The skill never enters it automatically. In that mode: mark all findings with `[Knowledge-Based — verify independently]`, reduce confidence ratings by one level, and add a prominent disclaimer to every deliverable's header.
 
 > **Reference:** Read `references/research-principles.md` before starting any wave. It defines source quality tiers, cross-referencing rules, and how to handle data gaps.
 
@@ -169,11 +254,17 @@ Two agents (or two sequential blocks):
 
 ---
 
-### Post-Research Checkpoint
+### Post-Research Checkpoint (autonomous artifact, not a user prompt)
 
-After all three waves complete, before synthesis, briefly present what the research found to the user: how many competitors were profiled, the top customer pain themes, the most notable strategic signals (funding, hiring, GTM patterns). Ask: "Does this align with your expectations? Any competitors to add or remove before I synthesize?"
+After all three waves complete, before synthesis, **write** a one-page alignment summary to `{project-name}/checkpoint.md`. Do **not** stop to ask the user — autonomy is the goal, and the verification step (Phase 3.5) plus the final deliverables surface anything the user needs to weigh in on.
 
-Keep it to one message — this is a quick alignment check, not a full report.
+The checkpoint file should contain:
+- Number of competitors profiled (direct + adjacent).
+- Top 3-5 customer pain themes surfaced.
+- Most notable strategic signals (funding, hiring, GTM patterns).
+- A "Worth re-running?" assessment: if any wave returned suspiciously thin output or the competitor set looks off, note it here. The user can read this file after the run and decide whether to re-invoke with refined intake.
+
+Mention the checkpoint file in a single short status line to the user ("Wrote checkpoint summary to `{project}/checkpoint.md`. Continuing to synthesis.") and proceed.
 
 ---
 
@@ -252,8 +343,7 @@ After synthesis completes and all deliverable files are written, run a verificat
 1. Spawn agent **V1: Verification** — it reads all deliverable files and checks for: unlabeled claims, internal contradictions, confidence rating consistency, missing data gaps, missing flags, stale data, and duplicate-source false corroboration
 2. V1 also runs startup-competitors-specific checks: battle card vs. report consistency, matrix vs. profiles alignment, pricing landscape vs. profiles consistency, cross-deliverable coherence
 3. V1 produces `{project-name}/verification-report.md`
-4. **If Critical issues found:** Pause and present issues to the user. Ask: fix first, or proceed as-is?
-5. **If only Warnings/Info:** Show one-line summary
+4. **Do not pause on critical issues.** Autonomy is the design contract. The verification report itself surfaces critical findings, and it rolls up into the HTML brief's `#verification` section (Phase 4) where it's prominently visible. After writing the report, print a one-line summary ("Verification: {N} critical, {N} warnings, {N} info — see `verification-report.md`") and proceed to Phase 4. The user can act on critical issues after the run completes.
 
 In Claude.ai or when Agent tool is unavailable, run the verification checks yourself in the main conversation following the same protocol.
 

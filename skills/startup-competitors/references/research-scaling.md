@@ -24,35 +24,21 @@ Assess three factors from the intake data:
 
 **Manual override always wins.** If the user requests "light" on a score-9 market, use Light. If they request "deep" on a score-3 market, use Deep.
 
-## User Communication
+## User Communication (autonomous — no question, just a status line)
 
-After calculating the score, show this to the user:
+The skill auto-selects the tier and does not stop to ask. After scoring, print a single status line:
 
 ```
-## Research Depth
-
-Based on your intake, I've assessed the research complexity:
-
-| Factor           | Assessment          | Score |
-|------------------|---------------------|-------|
-| Market breadth   | {description}       | {1-3} |
-| Known competitors| {N} identified      | {1-3} |
-| Geographic scope | {description}       | {1-3} |
-
-**Complexity score: {X}/9 — recommended depth: {Light/Standard/Deep}**
-
-You can override this. Here's what each depth means:
-
-| Depth        | Agents | Searches per agent | Best for                                      |
-|--------------|--------|--------------------|-----------------------------------------------|
-| **Light**    | {N}    | 2-3 rounds         | Quick scan, niche markets, time-sensitive decisions |
-| **Standard** | {N}    | 3-4 rounds         | Most cases, balanced depth vs. speed           |
-| **Deep**     | {N}    | 5-6 rounds         | Crowded markets, high-stakes decisions, thorough due diligence |
-
-→ Type **light**, **deep**, or **ok** to accept the recommendation.
+Running {Light/Standard/Deep} research — complexity score {X}/9 ({N} agents per wave, {R} search rounds each).
 ```
 
-The agent counts shown should reflect the actual numbers for this skill (see Wave Configuration below).
+If the original intake message contained an override keyword (`quick`, `fast`, `light`, `deep`, `thorough`, `comprehensive`), honor it and note the override in the status line:
+
+```
+Running Deep research — user override (intake said "thorough"). Score was {X}/9.
+```
+
+No prompt, no waiting for user input — proceed directly to Phase 2.
 
 ## Wave Configuration: startup-competitors
 
