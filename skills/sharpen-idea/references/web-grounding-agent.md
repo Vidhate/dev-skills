@@ -49,15 +49,22 @@ Spawn the subagent with the `Agent` tool. Give it exactly:
 - **Never let absent tools become silent opinion.** `WEB_UNAVAILABLE` aborts the
   fact-check; surface it to the user rather than answering from training data.
 
-## Integrating the result
+## Integrating the result — keep it to a handful of bullets
 
-When the subagent returns:
+The full findings live in the research file on disk. What reaches the **chat** is
+short:
 
-1. State the finding plainly and how confident it is.
-2. Say which direction it moves conviction and why, in one line.
-3. Mark the uncertainty resolved (or "researched, still inconclusive" — which is
-   itself a finding the user should sit with).
-4. If it surfaced a *new* uncertainty (research often does), add it to the ledger.
+1. **2–4 bullets** of the load-bearing facts, each with its inline source link.
+   Not a landscape essay, not a multi-section write-up, not a table of every tool
+   you found. The single facts that move conviction — nothing else.
+2. **One line** on which way it moves conviction and why.
+3. Mark the uncertainty resolved (or "researched, still inconclusive" — itself a
+   finding the user should sit with).
+4. If it surfaced a *new* uncertainty, add it to the ledger silently.
+
+If the user wants the full landscape, they'll ask — then point them at the
+research file or expand. Default to crisp. See the Output discipline section in
+SKILL.md.
 
 ## Parallelism
 

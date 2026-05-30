@@ -1,12 +1,18 @@
 ---
 name: sharpen-idea
-version: 0.1.0
+version: 0.2.0
 description: A domain-agnostic thinking partner that takes a rough idea stub and, through web-grounded Socratic dialogue, moves your conviction up or down until you're out of the "I don't know how good this is" limbo. Surfaces the assumptions baked into an idea, grounds the fact-checkable ones in real web research, asks sharp probing questions on the judgment ones, and ends with a clear directional read plus a static HTML brief. Use when the user has a half-formed idea, a vague concept, a stub, a hunch, or a high-level scope they want to pressure-test, flesh out, gain or lose conviction on, or think through with a sharp partner. Triggers for "help me think through this idea", "flesh out this idea", "pressure-test this", "is this idea any good", "I have a rough idea", "thought partner", "stress test my idea", "help me get clarity on", "poke holes in this", "should I pursue this". Produces a fleshed-out idea brief, NOT a plan.
 allowed-tools: ["Agent", "WebSearch", "WebFetch", "Read", "Write", "Edit", "Bash", "TodoWrite"]
 ---
 
 <!--
   CHANGELOG
+  0.2.0 — Brevity pass. Added an Output discipline contract: each round leads with
+          the one sharp question/flag and fits on one screen; banned the per-round
+          "locking in resolutions" tables, ledger dumps, multi-section research
+          essays, and standalone conviction-update headers. Research now returns
+          2-4 bulleted facts to chat (full detail to disk). Detail lives only in
+          Phase 3 synthesis + the HTML brief.
   0.1.0 — Initial skill. Uncertainty-loop engine: surface highest-leverage
           uncertainty → classify fact-checkable vs judgment-only → ground via web
           subagent OR ask one funnel question → integrate → update conviction →
@@ -49,6 +55,42 @@ ends when the load-bearing uncertainties are settled.
 ```
 INTAKE → [ surface uncertainty → classify → ground OR ask → integrate → update conviction ]* → SYNTHESIZE → HTML BRIEF
 ```
+
+## Output discipline — read this every round
+
+The skill's value is the sharp question, the load-bearing flag, the one fact that
+moves conviction. Everything else is packaging, and packaging is the enemy. A
+round that buries one good question under 1,500 words of tables and recaps has
+failed even if the question was perfect.
+
+**Each round, by default, fits on one screen.** The shape:
+
+1. **(≤1 line, optional) What just resolved + which way conviction moved.** Only if
+   it actually changed. `↑ Holds — the personas share a real thread.` That's the
+   whole recap. No tables.
+2. **The one thing.** The single highest-leverage uncertainty, pushback, or
+   question — stated sharply, up front.
+3. **Why it matters — 1–3 sentences or ≤3 bullets.** Just enough for the user to
+   answer well. Not an essay.
+4. **The question itself** (if judgment) or **the finding** (if fact), as the last
+   and most prominent thing.
+
+**Banned by default** (the user will pull these if they want them — don't push):
+
+- "Locking in last round's resolutions" tables and "Ledger update" sections. Track
+  the ledger silently (TodoWrite). Surface at most a one-line recap.
+- Multi-section research write-ups. A fact-check returns **2–4 bullets of
+  load-bearing facts with inline sources** — the full detail lives in the research
+  file on disk, not the chat.
+- Standalone "Conviction update" headers. Conviction moves in the ≤1-line recap,
+  not its own section.
+- Replaying the user's full answer back to them. Mirror in a phrase, then move.
+- Previewing the entire uncertainty list. Name only the one you're working now.
+
+**The test before sending any message:** "Could a sharp colleague say this in half
+the words?" If yes, cut. The user asked for a thinking partner, not a report.
+Detail has exactly one home — the Phase 3 synthesis and the HTML brief. The loop
+stays lean.
 
 ## Reference files
 
@@ -93,15 +135,17 @@ starting **uncertainty ledger**.
 
 1. **Take the stub.** Accept it however it arrives — pasted text, a verbal
    description, or a pointer to a file. If it's a file, read it.
-2. **Reflect it back in one tight paragraph.** "Here's what I think you're
-   reaching for…" Let the user correct you. Do NOT start probing yet — get the
-   idea right first. This protects fragile early-stage thinking.
-3. **Extract the uncertainty ledger.** Read `references/uncertainty-ledger.md`.
-   Privately list the assumptions and open questions baked into the idea, and tag
-   each one: **fact-checkable** vs **judgment-only**, and **load-bearing** vs
-   **peripheral**. You do not need to show the full ledger — you'll work it down
-   over the loop. Maintain it across the session (TodoWrite is a fine place to
-   track the live ledger).
+2. **Reflect it back in 2–4 sentences.** "Here's what I think you're reaching
+   for…" Tight, not a full essay restating every nuance. Let the user correct you.
+   Do NOT start probing yet — get the idea right first. This protects fragile
+   early-stage thinking.
+3. **Extract the uncertainty ledger — silently.** Read
+   `references/uncertainty-ledger.md`. Privately list the assumptions and open
+   questions baked into the idea, tag each (**fact-checkable** vs
+   **judgment-only**, **load-bearing** vs **peripheral**), and keep it in TodoWrite.
+   Do NOT show the user the full ledger or a numbered preview of every uncertainty
+   — that's the wall-of-text failure mode. You'll work it down one at a time. At
+   most, name the single uncertainty you're starting with.
 4. **Set the starting conviction read** to "genuinely uncertain" — that's why
    we're here.
 
@@ -136,14 +180,17 @@ Each round:
      parked flaw and move on; return to it once the idea is concrete.
    - **Escalate adaptively.** Gentle while the idea is forming; harder once it's
      concrete. If the user says "go harder," escalate immediately.
-4. **Integrate** the answer. Mark the uncertainty resolved or parked. Say in one
-   line how it moved your conviction ("that pushes me toward / away because…").
+4. **Integrate** the answer. Mark the uncertainty resolved or parked silently in
+   the ledger. Show the user at most **one line** of conviction movement — no
+   recap tables, no ledger dumps. Obey the Output discipline section above.
 5. **Repeat** until load-bearing uncertainties are resolved or you hit diminishing
    returns. Then tell the user you think you've got what you need and move to
    synthesis (or let them keep going if they want).
 
 Keep the loop honest: surface uncomfortable uncertainties, not just convenient
-ones. The point is to find out if the idea is good, not to confirm it.
+ones. The point is to find out if the idea is good, not to confirm it. And keep it
+lean — re-read the Output discipline section if a round is sprawling past one
+screen.
 
 ---
 
